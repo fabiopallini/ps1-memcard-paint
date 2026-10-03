@@ -46,7 +46,8 @@ function dom(html){
 }
 (async()=>{
   const document=dom(fs.readFileSync(path.join(__dirname,'index.html'),'utf8')),alerts=[],blobs=new Map();
-  const context=vm.createContext({document,TextDecoder,Blob,setInterval(){},setTimeout(){},alert:m=>alerts.push(m),confirm:()=>true,URL:{createObjectURL(blob){const url='blob:'+blobs.size;blobs.set(url,blob);return url;},revokeObjectURL(){}},window:{addEventListener(){}}});
+  let acceptConfirm=true;
+  const context=vm.createContext({document,TextDecoder,Blob,setInterval(){},setTimeout(){},alert:m=>alerts.push(m),confirm:()=>acceptConfirm,URL:{createObjectURL(blob){const url='blob:'+blobs.size;blobs.set(url,blob);return url;},revokeObjectURL(){}},window:{addEventListener(){}}});
   for(const file of ['card.js','ff8.js','ff8-ui.js','app.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,file),'utf8'),context,{filename:file});
   const $=id=>document.getElementById(id),getBytes=()=>Buffer.from(vm.runInContext('card.bytes',context));
   const source=fs.readFileSync(path.join(__dirname,'../card1.mcd'));
@@ -94,8 +95,41 @@ function dom(html){
   $('file').files=[{name:'bad.mcd',arrayBuffer:async()=>new ArrayBuffer(4)}];await $('file').onchange({target:$('file')});assert.equal(alerts.length,1);assert.equal(getBytes().length,131072);
   const beforeRepair=getBytes();vm.runInContext('card.bytes[slot.base+0x180]^=1;ff8Editor.refresh()',context);$('gameMode').click();
   assert.match($('ff8Checksum').textContent,/Expected/);$('ff8Body').querySelector('button').click();assert.deepEqual(getBytes(),beforeRepair);assert.match($('ff8Checksum').textContent,/OK/);
+  // Save management uses the same history and copies survive loading another card.
+  assert.equal($('slots').children.length,15);assert.equal($('deleteSave').disabled,false);
+  $('copySave').click();assert.ok(vm.runInContext('copiedSave',context));
+  const beforeDelete=getBytes(),copiedData=Buffer.from(vm.runInContext('copiedSave.data[0]',context));
+  acceptConfirm=false;$('deleteSave').click();assert.deepEqual(getBytes(),beforeDelete,'cancelled deletion must preserve the card');acceptConfirm=true;
+  $('deleteSave').click();assert.equal(vm.runInContext('card.slots()[1].state',context),0xa1);assert.equal($('gameMode').disabled,true);
+  assert.deepEqual(getBytes().subarray(8192,16384),beforeDelete.subarray(8192,16384),'delete must preserve other saves');
+  $('undo').click();assert.deepEqual(getBytes(),beforeDelete);assert.equal($('gameMode').disabled,false);
+  $('redo').click();assert.equal(vm.runInContext('card.slots()[1].state',context),0xa1);$('undo').click();
+  const destination=Buffer.alloc(131072);destination[0]=77;destination[1]=67;destination[127]=14;
+  for(let b=1;b<=15;b++){destination.writeUInt32LE(0xa0,b*128);destination.writeUInt16LE(0xffff,b*128+8);destination[b*128+127]=0xa0;}
+  $('file').files=[{name:'destination.mcd',arrayBuffer:async()=>destination.buffer.slice(destination.byteOffset,destination.byteOffset+destination.byteLength)}];await $('file').onchange({target:$('file')});
+  assert.equal($('copySave').disabled,true);assert.equal($('controls').disabled,true);assert.equal($('gameMode').disabled,true);
+  $('slots').children[14].click();assert.equal($('pasteSave').disabled,false);$('pasteSave').click();
+  assert.deepEqual(getBytes().subarray(15*8192,16*8192),copiedData);assert.equal(vm.runInContext('card.chain(15).length',context),1);
+  assert.equal($('gameMode').disabled,false);assert.equal(vm.runInContext('new FF8.FF8Save(card,slot).checksums().valid',context),true);
+  const pasted=getBytes();$('undo').click();assert.deepEqual(getBytes(),destination);assert.equal($('controls').disabled,true);$('redo').click();assert.deepEqual(getBytes(),pasted);
+  $('slots').children[2].click();assert.equal($('controls').disabled,true);$('pasteSave').click();assert.deepEqual(getBytes(),pasted);assert.match($('cardMessage').textContent,/same filename/);
+  $('download').click();assert.equal(document.downloads[1].filename,'destination-edited.mcd');assert.deepEqual(Buffer.from(await blobs.get(document.downloads[1].url).arrayBuffer()),pasted);
+  // Linked tiles select their owning save; UI operations include the whole chain.
+  const multi=Buffer.from(destination),multiBlocks=[5,2,10];
+  multiBlocks.forEach((b,i)=>{
+    const dir=b*128;multi.writeUInt32LE(i===0?0x51:i===2?0x53:0x52,dir);multi.writeUInt16LE(i===2?0xffff:multiBlocks[i+1]-1,dir+8);
+    if(i===0){multi.writeUInt32LE(24576,dir+4);multi.set(Buffer.from('BASLUS-12345MULTI'),dir+10);multi.set(copiedData,b*8192);}else multi.fill(70+i,b*8192,(b+1)*8192);
+    let xor=0;for(let j=0;j<127;j++)xor^=multi[dir+j];multi[dir+127]=xor;
+  });
+  $('file').files=[{name:'multi.mcd',arrayBuffer:async()=>multi.buffer.slice(multi.byteOffset,multi.byteOffset+multi.byteLength)}];await $('file').onchange({target:$('file')});
+  $('slots').children[1].click();assert.equal(vm.runInContext('slot.block',context),5);assert.equal($('copySave').disabled,false);$('copySave').click();assert.equal(vm.runInContext('copiedSave.data.length',context),3);
+  $('deleteSave').click();assert.deepEqual(Array.from(vm.runInContext('[5,2,10].map(b=>card.slots()[b-1].state)',context)),[0xa1,0xa2,0xa3]);$('undo').click();assert.deepEqual(getBytes(),multi);
+  $('file').files=[{name:'multi-target.mcd',arrayBuffer:async()=>destination.buffer.slice(destination.byteOffset,destination.byteOffset+destination.byteLength)}];await $('file').onchange({target:$('file')});
+  $('slots').children[6].click();$('pasteSave').click();assert.deepEqual(Array.from(vm.runInContext('card.chain(7).map(s=>s.block)',context)),[7,1,2]);
+  [7,1,2].forEach((b,i)=>assert.deepEqual(getBytes().subarray(b*8192,(b+1)*8192),multi.subarray(multiBlocks[i]*8192,(multiBlocks[i]+1)*8192)));
+  $('undo').click();assert.deepEqual(getBytes(),destination);
   const unsupported=Buffer.from(source);unsupported[8192+0xee0]=0;unsupported[16384+0xee0]=0;
   $('file').files=[{name:'other.mcd',arrayBuffer:async()=>unsupported.buffer.slice(unsupported.byteOffset,unsupported.byteOffset+unsupported.byteLength)}];await $('file').onchange({target:$('file')});
   assert.equal($('gameMode').disabled,true);assert.equal($('iconPane').hidden,false);assert.equal($('controls').disabled,false);
-  console.log('OK: simulated DOM integration, loading, 9 panels without writes, levels/weapons/inventory/magic, CRC, undo/redo, rollback, export, block switching and zoom.');
+  console.log('OK: simulated DOM integration, loading, 9 panels without writes, levels/weapons/inventory/magic, CRC, undo/redo, rollback, export, block switching, zoom and single/multi-block copy/delete.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

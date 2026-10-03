@@ -2,6 +2,7 @@
 const $ = id => document.getElementById(id);
 let card, original, exported, name, slot, frame = 0, ink = 1, history = [], future = [], stroke = false, last;
 let ff8Editor;
+let selectedBlock=null, copiedSave=null, slotPreviews=[];
 const hex = rgb => '#' + rgb.map(v => v.toString(16).padStart(2, '0')).join('');
 function dirty() { const baseline = exported || original; return card && card.bytes.some((v, i) => v !== baseline[i]); }
 function status() { $('status').textContent = `${name} · 128 KiB · ${dirty() ? 'Changes to export' : 'No changes'}`; }
@@ -26,62 +27,100 @@ function draw(canvas, s, f, grid = false) {
     ctx.stroke();
   }
 }
+function blockState(s) {
+  return s.state===0x51?'Save':[0x52,0x53].includes(s.state)?'Linked block':s.state===0xa1?'Deleted save':[0xa0,0xa2,0xa3].includes(s.state)?'Free block':'Unknown block';
+}
 function renderSlots() {
-  $('slots').replaceChildren();
-  for (const s of card.slots()) {
-    const b = document.createElement('button'); b.className = 'slot';
-    if (slot?.block === s.block) b.classList.add('active');
-    const icon = document.createElement('canvas'); icon.width = icon.height = 48;
-    if (s.frames) draw(icon, s, 0);
-    const text = document.createElement('span');
-    const state = s.state === 0x51 ? 'Save' : [0x52, 0x53].includes(s.state) ? 'Continuation' : s.state === 0xa1 ? 'Deleted' : [0xa0,0xa2,0xa3].includes(s.state) ? 'Free' : 'Unknown state';
-    text.textContent = `${String(s.block).padStart(2, '0')} · ${s.title || state}`;
-    const meta = document.createElement('small'); meta.textContent = `${state}${s.filename ? ' · ' + s.filename : ''}${s.state === 0x51 && !s.frames ? ' · Invalid icon header' : ''}`;
-    text.append(meta); b.append(icon, text); b.disabled = !s.frames;
-    b.onclick = () => { finish(); select(s); }; $('slots').append(b);
+  $('slots').replaceChildren();slotPreviews=[];
+  const free=card.freeBlocks();$('cardCapacity').textContent=`${free.length} / 15 free`;
+  for(const s of card.slots()) {
+    const owner=card.owner(s.block),b=document.createElement('button');b.className='slot';
+    b.classList.toggle('active',selectedBlock===s.block);b.classList.toggle('deleted',[0xa1,0xa2,0xa3].includes(s.state));b.classList.toggle('free',free.includes(s.block));
+    b.setAttribute('aria-pressed',String(selectedBlock===s.block));
+    const description=`Block ${s.block} · ${blockState(s)}${owner?.title?' · '+owner.title:''}`;
+    b.title=description;b.setAttribute('aria-label',description);
+    const number=document.createElement('span');number.className='block-number';number.textContent=String(s.block).padStart(2,'0');b.append(number);
+    if(owner?.frames) {
+      const icon=document.createElement('canvas');icon.width=icon.height=48;draw(icon,owner,0);b.append(icon);slotPreviews.push({canvas:icon,slot:owner});
+    } else {
+      const blank=document.createElement('span');blank.className='block-placeholder';blank.textContent=free.includes(s.block)?'':s.state===0x51?'?':'·';b.append(blank);
+    }
+    if([0x52,0x53].includes(s.state)) {const link=document.createElement('span');link.className='block-link';link.textContent='↔';b.append(link);}
+    b.onclick=()=>{finish();select(s);};$('slots').append(b);
   }
 }
-function select(s) {
-  slot = s; frame = 0; $('controls').disabled = false;
-  $('title').textContent = s.title || s.filename;
-  $('details').textContent = `Block ${s.block} · ${s.size} bytes · ${s.frames} frames · Header 0x${s.base.toString(16)}${s.state === 0xa1 ? ' · Deleted save, remaining data' : ''}`;
-  $('frames').replaceChildren();
-  for (let i = 0; i < s.frames; i++) {
-    const b = document.createElement('button'); b.textContent = i + 1;
-    b.onclick = () => { finish(); frame = i; refresh(); }; $('frames').append(b);
-  }
-  refresh();
-}
+function select(s) { selectedBlock=s.block;frame=0;refresh(); }
 function refresh() {
-  if (!card) return;
-  renderSlots(); status();
-  ff8Editor?.refresh();
-  $('undo').disabled = !history.length; $('redo').disabled = !future.length;
-  if (!slot) return;
-  draw($('paint'), slot, frame, $('grid').checked); draw($('preview'), slot, frame);
-  [...$('frames').children].forEach((b, i) => b.classList.toggle('active', i === frame));
-  $('palette').replaceChildren();
-  for (let i = 0; i < 16; i++) {
-    const b = document.createElement('button'); b.textContent = i.toString(16).toUpperCase();
-    b.style.background = card.word(slot, i) === 0 ? 'repeating-conic-gradient(#777 0% 25%,#444 0% 50%) 0/12px 12px' : hex(card.color(slot, i));
-    b.classList.toggle('active', i === ink); b.title = `Color ${i}`;
-    b.onclick = () => { ink = i; refresh(); }; $('palette').append(b);
+  if(!card)return;
+  const physical=card.slots().find(s=>s.block===selectedBlock),owner=physical?card.owner(physical.block):null;
+  slot=owner?.frames?owner:null;
+  $('controls').disabled=!slot;
+  $('title').textContent=owner?.title||owner?.filename||'Memory Card Paint';
+  $('saveTitle').textContent=owner?.title||owner?.filename||(physical?blockState(physical):'Select a block');
+  $('saveMeta').textContent=physical?`Block ${physical.block} · ${blockState(physical)}${owner?.filename?' · '+owner.filename:''}`:'Select one of the 15 blocks.';
+  let chain=null;try { if(owner?.state===0x51)chain=card.chain(owner.block); } catch {}
+  $('copySave').disabled=!chain;$('deleteSave').disabled=!chain;
+  $('pasteSave').disabled=!copiedSave||!physical||!card.freeBlocks().includes(physical.block);
+  $('details').textContent=owner?`Save starts at block ${owner.block} · ${owner.size} bytes${chain?' · '+chain.length+' block'+(chain.length===1?'':'s'):''}${owner.state===0xa1?' · Deleted, residual data':''}`:'Select an occupied block to edit its icon, or a free block to paste a copied save.';
+  renderSlots();status();ff8Editor?.refresh();
+  $('undo').disabled=!history.length;$('redo').disabled=!future.length;
+  $('frames').replaceChildren();
+  if(!slot) {
+    $('paint').getContext('2d').clearRect(0,0,384,384);$('preview').getContext('2d').clearRect(0,0,96,96);$('palette').replaceChildren();return;
   }
-  $('color').value = hex(card.color(slot, ink)); $('transparent').checked = card.word(slot, ink) === 0;
-  $('stp').checked = !!(card.word(slot, ink) & 0x8000);
-  $('colorLabel').textContent = `Color ${ink.toString(16).toUpperCase()}`;
+  frame=Math.min(frame,slot.frames-1);
+  for(let i=0;i<slot.frames;i++) {
+    const b=document.createElement('button');b.textContent=i+1;b.classList.toggle('active',i===frame);
+    b.onclick=()=>{finish();frame=i;refresh();};$('frames').append(b);
+  }
+  draw($('paint'),slot,frame,$('grid').checked);draw($('preview'),slot,frame);
+  $('palette').replaceChildren();
+  for(let i=0;i<16;i++) {
+    const b=document.createElement('button');b.textContent=i.toString(16).toUpperCase();
+    b.style.background=card.word(slot,i)===0?'repeating-conic-gradient(#777 0% 25%,#444 0% 50%) 0/12px 12px':hex(card.color(slot,i));
+    b.classList.toggle('active',i===ink);b.title=`Color ${i}`;b.onclick=()=>{ink=i;refresh();};$('palette').append(b);
+  }
+  $('color').value=hex(card.color(slot,ink));$('transparent').checked=card.word(slot,ink)===0;
+  $('stp').checked=!!(card.word(slot,ink)&0x8000);$('colorLabel').textContent=`Color ${ink.toString(16).toUpperCase()}`;
 }
+function cardMessage(text,error=false) { $('cardMessage').textContent=text;$('cardMessage').className='card-message'+(error?' error':''); }
+function changeCard(action) {
+  finish();const candidate=new MemoryCard(card.bytes),result=action(candidate);
+  remember();card.bytes=candidate.bytes;refresh();return result;
+}
+$('copySave').onclick=()=>{
+  try {
+    finish();const owner=card.owner(selectedBlock);copiedSave=card.copySave(owner?.block);
+    refresh();cardMessage(`Copied ${copiedSave.title||copiedSave.filename} (${copiedSave.data.length} blocks). Open a destination card, select a free block and Paste.`);
+  } catch(error) {cardMessage(error.message,true);}
+};
+$('pasteSave').onclick=()=>{
+  try {
+    if(!copiedSave)return;
+    changeCard(candidate=>candidate.pasteSave(copiedSave,selectedBlock));frame=0;refresh();
+    cardMessage('Save pasted. Use File → Save copy .mcd to export. Undo restores the previous card.');
+  } catch(error) {cardMessage(error.message,true);}
+};
+$('deleteSave').onclick=()=>{
+  try {
+    finish();const owner=card.owner(selectedBlock),chain=card.chain(owner?.block);
+    if(!confirm(`Delete ${owner.title||owner.filename}? All ${chain.length} blocks of this save will be freed. You can Undo before closing the card.`))return;
+    changeCard(candidate=>candidate.deleteSave(owner.block));
+    cardMessage('Save deleted. Use Undo to restore it, or File → Save copy .mcd to export.');
+  } catch(error) {cardMessage(error.message,true);}
+};
 $('file').onchange = async event => {
   const file = event.target.files[0]; if (!file) return;
   try {
     const next = new MemoryCard(new Uint8Array(await file.arrayBuffer()));
     if (dirty() && !confirm('Unexported changes will be lost. Open the new card?')) return;
-    finish(); card = next; original = next.bytes.slice(); exported = null; name = file.name; history = []; future = []; slot = null;
+    finish(); card = next; original = next.bytes.slice(); exported = null; name = file.name; history = []; future = []; slot = null; selectedBlock=null;
     ff8Editor.mode(false); $('ff8Message').textContent = 'Changes are applied to the card in memory. Use File → Save copy .mcd to export.';
     $('controls').disabled = true; $('download').disabled = false;
     $('paint').getContext('2d').clearRect(0,0,384,384); $('preview').getContext('2d').clearRect(0,0,96,96);
     $('title').textContent = 'Icon Editor'; $('details').textContent = 'No save has a valid icon.';
-    const first = card.slots().find(s => s.frames); if (first) select(first); else refresh();
+    const first = card.slots().find(s => s.state===0x51) || card.slots()[0];select(first);
+    cardMessage(copiedSave?`Copied save ready: ${copiedSave.title||copiedSave.filename}. Select a free block and Paste.`:'Copy a save, open a destination card, select a free block and Paste. Save copy .mcd exports your changes.');
   } catch (error) { alert(error.message); }
   finally { event.target.value = ''; }
 };
@@ -171,7 +210,10 @@ $('download').onclick = () => {
   exported = card.bytes.slice(); status();
 };
 let tick = 0;
-setInterval(() => { if (slot) draw($('preview'),slot,tick++ % slot.frames); },250);
+setInterval(() => {
+  tick++;if(slot)draw($('preview'),slot,tick%slot.frames);
+  for(const entry of slotPreviews)draw(entry.canvas,entry.slot,tick%entry.slot.frames);
+},250);
 window.addEventListener('beforeunload', e => { if (dirty()) { e.preventDefault(); e.returnValue = ''; } });
 ff8Editor = new FF8Editor({
   card: () => card,

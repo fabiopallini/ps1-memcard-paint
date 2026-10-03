@@ -4,7 +4,8 @@ Made with **Codex GPT-Sol**.
 
 An HTML/JavaScript editor for PlayStation memory cards, with a Windows 95/98 Paint-style interface. Runs offline in your browser, with no installation required.
 
-- Browse saves and edit their 16×16 icons using a pencil, flood fill, eyedropper, color palette and animation frames.
+- Browse 15 blocks in a PS1 BIOS-inspired grid and edit 16×16 icons using a pencil, flood fill, eyedropper, color palette and animation frames.
+- Copy saves between cards and delete entire saves, including linked blocks, with undo/redo.
 - Edit **Final Fantasy VIII PS1** saves: levels, EXP, weapons, inventory, magic, junctions, GFs, gil, cards and Limit Breaks.
 - Includes undo/redo, an advanced hex editor and automatic FF8 checksum recalculation.
 - Offers documented FF8 story references across all four discs for experimentation; applying one changes progress and optionally the disc, without teleporting the party or updating event flags.
@@ -21,6 +22,8 @@ An HTML/JavaScript editor for PlayStation memory cards, with a Windows 95/98 Pai
 2. Use the **File** menu to open a raw 128 KiB memory card (`.mcd`, `.mcr` or `.bin`).
 3. Select a save and edit its icon, or click **FF8 Save** to edit FF8 game data.
 4. Choose **Save copy .mcd…** from the **File** menu to download the modified card. The original file remains unchanged.
+
+To copy a save: click **Copy**, open the destination card, select a free block and click **Paste**, then export the card. The copied save stays available while opening another card. A destination with the same save filename is rejected. **Delete** frees all blocks of the selected save; **Undo** restores it.
 
 ## References
 
