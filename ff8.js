@@ -11,6 +11,46 @@
   // Item IDs are game data, not inventory positions. All 198 inventory positions are editable.
   const ITEMS = 'Empty|Potion|Potion+|Hi-Potion|Hi-Potion+|X-Potion|Mega-Potion|Phoenix Down|Mega Phoenix|Elixir|Megalixir|Antidote|Soft|Eye Drops|Echo Screen|Holy Water|Remedy|Remedy+|Hero-trial|Hero|Holy War-trial|Holy War|Shell Stone|Protect Stone|Aura Stone|Death Stone|Holy Stone|Flare Stone|Meteor Stone|Ultima Stone|Gysahl Greens|Phoenix Pinion|Friendship|Tent|Pet House|Cottage|G-Potion|G-Hi-Potion|G-Mega-Potion|G-Returner|Rename Card|Amnesia Greens|HP-J Scroll|Str-J Scroll|Vit-J Scroll|Mag-J Scroll|Spr-J Scroll|Spd-J Scroll|Luck-J Scroll|Aegis Amulet|Elem Atk|Elem Guard|Status Atk|Status Guard|Rosetta Stone|Magic Scroll|GF Scroll|Draw Scroll|Item Scroll|Gambler Spirit|Healing Ring|Phoenix Spirit|Med Kit|Bomb Spirit|Hungry Cookpot|Mog’s Amulet|Steel Pipe|Star Fragment|Energy Crystal|Samantha Soul|Healing Mail|Silver Mail|Gold Armor|Diamond Armor|Regen Ring|Giant’s Ring|Gaea’s Ring|Strength Love|Power Wrist|Hyper Wrist|Turtle Shell|Orihalcon|Adamantine|Rune Armlet|Force Armlet|Magic Armlet|Circlet|Hypno Crown|Royal Crown|Jet Engine|Rocket Engine|Moon Curtain|Steel Curtain|Glow Curtain|Accelerator|Monk’s Code|Knight’s Code|Doc’s Code|Hundred Needles|Three Stars|Ribbon|Normal Ammo|Shotgun Ammo|Dark Ammo|Fire Ammo|Demolition Ammo|Fast Ammo|AP Ammo|Pulse Ammo|M-Stone Piece|Magic Stone|Wizard Stone|Ochu Tentacle|Healing Water|Cockatrice Pinion|Zombie Powder|Lightweight|Sharp Spike|Screw|Saw Blade|Mesmerize Blade|Vampire Fang|Fury Fragment|Betrayal Sword|Sleep Powder|Life Ring|Dragon Fang|Spider Web|Coral Fragment|Curse Spike|Black Hole|Water Crystal|Missile|Mystery Fluid|Running Fire|Inferno Fang|Malboro Tentacle|Whisper|Laser Cannon|Barrier|Power Generator|Dark Matter|Bomb Fragment|Red Fang|Arctic Wind|North Wind|Dynamo Stone|Shear Feather|Venom Fang|Steel Orb|Moon Stone|Dino Bone|Windmill|Dragon Skin|Fish Fin|Dragon Fin|Silence Powder|Poison Powder|Dead Spirit|Chef’s Knife|Cactus Thorn|Shaman Stone|Fuel|Girl Next Door|Sorceress’ Letter|Chocobo’s Tag|Pet Nametag|Solomon Ring|Magical Lamp|HP Up|Str Up|Vit Up|Mag Up|Spr Up|Spd Up|Luck Up|LuvLuv G|Weapons Mon 1st|Weapons Mon Mar|Weapons Mon Apr|Weapons Mon May|Weapons Mon Jun|Weapons Mon Jul|Weapons Mon Aug|Combat King 001|Combat King 002|Combat King 003|Combat King 004|Combat King 005|Pet Pals Vol.1|Pet Pals Vol.2|Pet Pals Vol.3|Pet Pals Vol.4|Pet Pals Vol.5|Pet Pals Vol.6|Occult Fan I|Occult Fan II|Occult Fan III|Occult Fan IV'.split('|');
   const ABILITIES = 'None|HP-J|Str-J|Vit-J|Mag-J|Spr-J|Spd-J|Eva-J|Hit-J|Luck-J|Elem-Atk-J|ST-Atk-J|Elem-Def-J|ST-Def-J|Elem-Defx2|Elem-Defx4|ST-Def-Jx2|ST-Def-Jx4|Abilityx3|Abilityx4|Magic|GF|Draw|Item|???|Card|Doom|Mad Rush|Treatment|Defend|Darkside|Recover|Absorb|Revive|LV Down|LV Up|Kamikaze|Devour|MiniMog|HP+20%|HP+40%|HP+80%|Str+20%|Str+40%|Str+60%|Vit+20%|Vit+40%|Vit+60%|Mag+20%|Mag+40%|Mag+60%|Spr+20%|Spr+40%|Spr+60%|Spd+20%|Spd+40%|Eva+30%|Luck+50%|Mug|Med Data|Counter|Return Damage|Cover|Initiative|Move-HP Up|HP Bonus|Str Bonus|Vit Bonus|Mag Bonus|Spr Bonus|Auto-Protect|Auto-Shell|Auto-Reflect|Auto-Haste|Auto-Potion|Expendx2-1|Expendx3-1|Ribbon|Alert|Move-Find|Enc-Half|Enc-None|Rare Item|SumMag+10%|SumMag+20%|SumMag+30%|SumMag+40%|GFHP+10%|GFHP+20%|GFHP+30%|GFHP+40%|Boost|Haggle|Sell-High|Familiar|Call Shop|Junk Shop|T Mag-RF|I Mag-RF|F Mag-RF|L Mag-RF|Time Mag-RF|ST Mag-RF|Supt Mag-RF|Forbid Mag-RF|Recov Med-RF|ST Med-RF|Ammo-RF|Tool-RF|Forbid Med-RF|GFRecov Med-RF|GFAbl Med-RF|Mid Mag-RF|High Mag-RF|Med LV Up|Card Mod'.split('|');
+  // Curated factual progress/location pairs from Hyne Data::momentLocation.
+  // Location labels are references, NOT field IDs or tested teleport destinations.
+  // Source: https://github.com/myst6re/hyne/blob/master/src/Data.cpp
+  const STORY_REFERENCES = [
+    [7,1,'Balamb Garden: infirmary'],
+    [20,1,'Fire Cavern'],
+    [70,1,'Dollet: town square'],
+    [110,1,'Dollet: communication tower'],
+    [150,1,'Balamb Garden: ballroom'],
+    [245,1,'Timber: Forest Owls base'],
+    [285,1,'Timber: TV station'],
+    [310,1,'Centra: excavation site'],
+    [320,1,'Galbadia Garden: front gate'],
+    [350,1,'Deling City: city square'],
+    [392,1,'Deling City: parade'],
+    [420,2,'D-District Prison'],
+    [456,2,'Galbadia Missile Base'],
+    [525,2,'Balamb Garden: MD level'],
+    [600,2,'Balamb Garden: master room'],
+    [646,2,'Fishermans Horizon'],
+    [723,2,'Fishermans Horizon: festival grounds'],
+    [760,2,'Balamb: hotel'],
+    [790,2,'Trabia Garden: athletic ground'],
+    [900,2,'Galbadia Garden: auditorium'],
+    [1091,3,'Edea’s house: bedroom'],
+    [1205,3,'Trabia Canyon'],
+    [1450,3,'White SeeD Ship: cabin'],
+    [1700,3,'Great Salt Lake'],
+    [2000,3,'Esthar: presidential palace hall'],
+    [2100,3,'Lunar Gate'],
+    [2508,3,'Lunar Base: medical room'],
+    [3000,3,'Ragnarok: air room'],
+    [3200,3,'Sorceress Memorial'],
+    [3601,3,'Esthar: presidential office'],
+    [3802,3,'Lunatic Pandora'],
+    [4000,4,'Commencement room'],
+    [4020,4,'Ultimecia Castle'],
+    [4050,4,'Ultimecia Castle: hall']
+  ].map(([progress,disc,label])=>Object.freeze({progress,disc,label}));
+  Object.freeze(STORY_REFERENCES);
   const CRC_TABLE = new Uint16Array(256);
   for (let i=0;i<255;i++) {
     let word = i << 8;
@@ -104,6 +144,15 @@
       integer(value,0,99999999); this.put(dream?0xc90:0xc8c,4,value); this.put(dream?0xf2c:0xf28,4,value);
       if (!!(this.get(0xea2)&1)===dream) this.put(0x18c,4,value);
     }
+    setStoryReference(progress,updateDisc=true) {
+      const reference=STORY_REFERENCES.find(entry=>entry.progress===progress);
+      if(!reference) throw new Error('Choose a documented story reference.');
+      this.put(0xfe0,2,reference.progress);
+      if(updateDisc) {
+        this.put(0xfac,1,reference.disc);
+        this.put(0x1c8,4,reference.disc-1);
+      }
+    }
     setTime(value) { this.put(0xe50,4,value); this.put(0x190,4,value); }
     setItem(index,id,quantity) {
       integer(index,0,197); integer(id,0,ITEMS.length-1); integer(quantity,0,100);
@@ -145,6 +194,6 @@
       for(let i=0;i<tokens.length;i++) this.put(offset+i,1,parseInt(tokens[i],16));
     }
   }
-  const api={FF8Save,CHARACTERS,GFS,CARDS,WEAPONS,MAGIC,ITEMS,ABILITIES,integer};
+  const api={FF8Save,CHARACTERS,GFS,CARDS,WEAPONS,MAGIC,ITEMS,ABILITIES,STORY_REFERENCES,integer};
   if(typeof module!=='undefined') module.exports=api; else root.FF8=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

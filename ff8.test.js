@@ -41,6 +41,24 @@ const multi=fresh();multi.bytes[128+8]=0;multi.bytes[128+9]=0;assert.equal(F.FF8
 const other=fresh();other.bytes[slot.base+0xee0]=0;assert.equal(F.FF8Save.inspect(other,other.slots()[0]).supported,false);
 const bad=fresh();bad.bytes[slot.base+0x180]^=1;assert.equal(F.FF8Save.inspect(bad,bad.slots()[0]).checksum.valid,false);
 const repaired=new F.FF8Save(bad,bad.slots()[0]);repaired.finalize();assert.equal(repaired.checksums().valid,true);assert.deepEqual(bad.bytes,new Uint8Array(source));
+// Every reference edits only progress, optional disc/preview, and checksums.
+assert.deepEqual([...new Set(F.STORY_REFERENCES.map(r=>r.disc))],[1,2,3,4]);
+assert.equal(new Set(F.STORY_REFERENCES.map(r=>r.progress)).size,F.STORY_REFERENCES.length);
+for(const block of [1,2])for(const reference of F.STORY_REFERENCES)for(const updateDisc of [false,true]) {
+  const card=fresh(),slot=card.slots()[block-1],save=new F.FF8Save(card,slot),before=card.bytes.slice();
+  const oldDisc=save.get(0xfac),oldPreview=save.get(0x1c8,4);
+  save.setStoryReference(reference.progress,updateDisc);save.finalize();
+  assert.equal(save.get(0xfe0,2),reference.progress);
+  assert.equal(save.get(0xfac),updateDisc?reference.disc:oldDisc);
+  assert.equal(save.get(0x1c8,4),updateDisc?reference.disc-1:oldPreview);
+  assert.equal(save.checksums().valid,true);
+  const allowed=new Set([0x180,0x181,0x1520,0x1521,0xfe0,0xfe1,...(updateDisc?[0xfac,0x1c8,0x1c9,0x1ca,0x1cb]:[])].map(o=>slot.base+o));
+  for(let i=0;i<before.length;i++)if(!allowed.has(i))assert.equal(card.bytes[i],before[i],`unexpected edit at ${i.toString(16)}`);
+}
+{
+  const card=fresh(),save=new F.FF8Save(card,card.slots()[0]),before=card.bytes.slice();
+  assert.throws(()=>save.setStoryReference(65535));assert.deepEqual(card.bytes,before);
+}
 const corrupted=fresh(),f=new F.FF8Save(corrupted,corrupted.slots()[0]);f.patch(0xee0,'00');assert.throws(()=>f.finalize());
 assert.deepEqual(fs.readFileSync(path.join(__dirname,'../card1.mcd')),source);
 console.log('OK: real FF8 saves in both blocks, CRC, levels/EXP, weapons, magic, inventory, GFs, preview copies, limits, round-trip and data preservation.');

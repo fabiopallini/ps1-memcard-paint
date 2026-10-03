@@ -7,6 +7,7 @@ An HTML/JavaScript editor for PlayStation memory cards, with a Windows 95/98 Pai
 - Browse saves and edit their 16×16 icons using a pencil, flood fill, eyedropper, color palette and animation frames.
 - Edit **Final Fantasy VIII PS1** saves: levels, EXP, weapons, inventory, magic, junctions, GFs, gil, cards and Limit Breaks.
 - Includes undo/redo, an advanced hex editor and automatic FF8 checksum recalculation.
+- Offers documented FF8 story references across all four discs for experimentation; applying one changes progress and optionally the disc, without teleporting the party or updating event flags.
 
 ## Preview
 

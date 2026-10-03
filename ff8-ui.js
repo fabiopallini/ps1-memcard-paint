@@ -6,7 +6,7 @@
   const options=(names)=>names.map((name,value)=>[value,`${String(value).padStart(3,'0')} · ${name}`]);
   class FF8Editor {
     constructor(context) {
-      this.context=context; this.page='general'; this.characterIndex=0; this.gfIndex=0; this.itemPage=0; this.itemSearch=''; this.rawOffset=0x184; this.rawText=''; this.lastBlock=null;
+      this.context=context; this.page='general'; this.characterIndex=0; this.gfIndex=0; this.itemPage=0; this.itemSearch=''; this.rawOffset=0x184; this.rawText=''; this.lastBlock=null; this.storyReference=-1; this.storyUpdateDisc=true;
       $('iconMode').onclick=()=>this.mode(false); $('gameMode').onclick=()=>this.mode(true);
       $('ff8Tabs').querySelectorAll('button').forEach(b=>b.onclick=()=>{this.page=b.dataset.page;this.render();});
     }
@@ -23,7 +23,7 @@
       $('gameMode').disabled=!info.supported; $('gameSupport').textContent=info.reason;
       if(!info.supported) { this.mode(false); return; }
       if(this.lastBlock!==slot.block || this.lastCard!==card) {
-        this.lastBlock=slot.block; this.lastCard=card;this.itemPage=0;this.itemSearch='';this.rawText='';
+        this.lastBlock=slot.block; this.lastCard=card;this.itemPage=0;this.itemSearch='';this.rawText='';this.storyReference=-1;
       }
       if(!$('ff8Pane').hidden) this.render();
     }
@@ -209,9 +209,19 @@
       [['Boko level',1,1,100],['Boko current HP',2,1,255],['Boko maximum HP',3,1,255],['Boko weapon (encoded value)',4,2,65535],['Rank',6,1,255],['Movement',7,1,255],['Chocobo saves',8,4,0xffffffff],['Class A items',0x14,1,255],['Class B items',0x15,1,255],['Class C items',0x16,1,255],['Class D items',0x17,1,255],['Boko attack (0–3)',0x2d,1,3]].forEach(([l,o,size,max])=>this.number(ch,l,0x14e0+o,size,max));
     }
     advanced() {
-      const s=this.save(),g=this.group('Location and progression');
-      this.note(g,'Story progress changes the main quest variable only. It does not teleport the party or update event flags, sub-story progress, disc or coordinates. Changing it alone may prevent progression. Undo restores each change.');
-      this.number(g,'Story progress',0xfe0,2);this.number(g,'Module (1 field, 2 world map, 3 battle)',0xec0,2,3);this.number(g,'Current field ID',0xec2,2);this.number(g,'Previous field ID',0xec4,2);
+      const s=this.save(),refs=this.group('Story references · experimental');
+      this.note(refs,'Choose a documented story reference, then click Apply. This changes story progression without moving the party. References cover all four discs; continuing from your current location may require experimentation.');
+      refs.classList.add('story-references');
+      const current=s.get(0xfe0,2),exact=F.STORY_REFERENCES.find(r=>r.progress===current);
+      this.note(refs,`Current progress: ${current} · Disc ${s.get(0xfac)}${exact?' · '+exact.label:' · No exact match in the selected references.'}`);
+      this.picker(refs,'Story reference',this.storyReference,[[-1,'Choose a reference…'],...F.STORY_REFERENCES.map(r=>[r.progress,`Disc ${r.disc} · ${r.progress} · ${r.label}`])],v=>this.storyReference=v,'story-reference');
+      const chosen=F.STORY_REFERENCES.find(r=>r.progress===this.storyReference);
+      const wrap=el('label',undefined,'save-check'),disc=el('input');disc.type='checkbox';disc.checked=this.storyUpdateDisc;disc.dataset.key='story-update-disc';
+      disc.onchange=()=>{this.storyUpdateDisc=disc.checked;this.render();};wrap.append(disc,el('span','Also update disc and preview'));refs.append(wrap);
+      if(chosen)this.note(refs,`Will set story progress to ${chosen.progress}${this.storyUpdateDisc?' and disc to '+chosen.disc:''}. Location and event data will stay unchanged.`);
+      const actions=el('div',undefined,'save-actions');refs.append(actions);
+      const apply=this.button(actions,'Apply story reference',f=>f.setStoryReference(this.storyReference,this.storyUpdateDisc));apply.disabled=!chosen;
+      const source=el('a','Reference: Hyne progress/location table');source.href='https://github.com/myst6re/hyne/blob/master/src/Data.cpp#L853-L880';source.target='_blank';source.rel='noopener noreferrer';actions.append(source);
       const raw=this.group('Edit bytes · FF8 data');this.note(raw,'Offsets relative to the start of the PS1 block: 0x184 to 0x151F. Card headers, icons, the FF-8 signature and checksums are protected. Both checksums are recalculated after editing.');
       const label=el('label',undefined,'save-field'),offset=el('input');offset.type='text';offset.value=this.rawOffset.toString(16).toUpperCase();offset.dataset.key='raw-offset';label.append(el('span','Hexadecimal offset'),offset);raw.append(label);
       offset.onchange=()=>{const text=offset.value.trim().replace(/^0x/i,'');if(!/^[a-f\d]+$/i.test(text)){$('ff8Message').textContent='Invalid hexadecimal offset.';offset.value=this.rawOffset.toString(16);return;}const v=parseInt(text,16);if(v<0x184||v>0x151f){$('ff8Message').textContent='Offset outside FF8 data.';offset.value=this.rawOffset.toString(16);return;}this.rawOffset=v;this.render();};
