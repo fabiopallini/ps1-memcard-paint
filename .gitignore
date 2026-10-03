@@ -1,0 +1,25 @@
+# Memory cards and local copies
+*.mcd
+*.mcr
+*.bin
+*.hex
+*.backup
+*.bak
+
+# Temporary files and logs
+*.tmp
+*.log
+*.swp
+*.swo
+*~
+
+# Operating system files and local settings
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+
+# Dependencies and test output
+node_modules/
+coverage/

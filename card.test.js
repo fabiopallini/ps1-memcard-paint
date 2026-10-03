@@ -1,0 +1,35 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const Card = require('./card.js');
+const source = fs.readFileSync(require('node:path').join(__dirname,'../card1.mcd'));
+const card = new Card(source), slots = card.slots();
+assert.equal(slots.filter(s => s.state === 0x51).length,2);
+assert.equal(slots.filter(s => s.state === 0xa0).length,13);
+assert.equal(slots[0].title,'ＦＦ８［０１］／００：１４');
+assert.equal(slots[0].frames,1);
+assert.deepEqual(card.bytes,new Uint8Array(source));
+const s = slots[0];
+for (let y=0;y<16;y++) for (let x=0;x<16;x++) {
+  const c = new Card(source), before = c.bytes.slice();
+  const neighbor = c.pixel(s,0,x ^ 1,y), next = (c.pixel(s,0,x,y)+1)%16;
+  c.pixel(s,0,x,y,next);
+  assert.equal(c.pixel(s,0,x,y),next); assert.equal(c.pixel(s,0,x ^ 1,y),neighbor);
+  const changed = [...c.bytes.keys()].filter(i=>c.bytes[i]!==before[i]);
+  assert.deepEqual(changed,[s.base+128+y*8+(x>>1)]);
+}
+card.setColor(s,5,[255,0,255],false,true);
+assert.equal(card.word(s,5),0xfc1f); assert.deepEqual(card.color(s,5),[255,0,255]);
+card.setColor(s,5,[255,0,255],true,false); assert.equal(card.word(s,5),0);
+const allowed = new Set([s.base+106,s.base+107]);
+card.bytes.forEach((v,i)=> { if (!allowed.has(i)) assert.equal(v,source[i]); });
+const animated = new Card(source); animated.bytes[s.base+2]=0x13;
+const a = animated.slots()[0]; assert.equal(a.frames,3);
+animated.pixel(a,2,15,15,9); assert.equal(animated.pixel(a,2,15,15),9);
+assert.equal(animated.bytes[s.base+511]>>4,9);
+animated.bytes[128]=0x52; assert.equal(animated.slots()[0].frames,0);
+animated.bytes[128]=0xa1; assert.equal(animated.slots()[0].frames,3);
+assert.throws(()=>new Card(new Uint8Array(1024)));
+assert.throws(()=>new Card(new Uint8Array(131072)));
+assert.deepEqual(fs.readFileSync(require('node:path').join(__dirname,'../card1.mcd')),source);
+console.log('OK: real card, titles, 256 pixels, adjacent nibbles, palette, animations, states and data preservation.');

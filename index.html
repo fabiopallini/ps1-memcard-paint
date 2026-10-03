@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Memory Card Paint</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="paint-window">
+<header class="titlebar"><svg class="app-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="#000" d="M1 2h12v12H1z"/><path fill="#fff" d="M2 3h10v10H2z"/><path fill="#008080" d="M3 4h8v8H3z"/><path fill="#ffff80" d="m5 12 8-10 2 2-8 10H5z"/><path fill="#000" d="m12 3 1-1 2 2-1 1zM5 12h2l-2 2z"/></svg><h1><span id="title">Untitled</span> - Memory Card Paint</h1><span class="title-caption">PS1</span></header>
+<nav class="menubar" aria-label="Application menu">
+<details class="menu"><summary><u>F</u>ile</summary><div class="menu-popup"><label class="menu-item" tabindex="0"><span><u>O</u>pen memory card…</span><span>Ctrl+O</span><input id="file" type="file" accept=".mcd,.mcr,.bin" hidden></label><button id="download" class="menu-item" disabled><span>Save <u>c</u>opy .mcd…</span><span>Ctrl+S</span></button><hr><span class="menu-note">Raw memory card · 128 KiB</span></div></details>
+<details class="menu"><summary><u>E</u>dit</summary><div class="menu-popup"><button id="undo" class="menu-item" disabled><span><u>U</u>ndo</span><span>Ctrl+Z</span></button><button id="redo" class="menu-item" disabled><span><u>R</u>edo</span><span>Ctrl+Shift+Z</span></button></div></details>
+<details class="menu"><summary><u>V</u>iew</summary><div class="menu-popup"><label class="menu-item"><span><input id="grid" type="checkbox" checked> Pixel <u>g</u>rid</span></label><label class="menu-item"><span><u>Z</u>oom</span><select id="zoom"><option value="256">1600%</option><option value="384" selected>2400%</option><option value="512">3200%</option><option value="640">4000%</option></select></label></div></details>
+<details class="menu"><summary><u>?</u></summary><div class="menu-popup help-popup"><strong>Memory Card Paint</strong><p>Open a card, select a save and draw with its 16-color palette.</p><p>Right-click: eyedropper.<br>Ctrl/Cmd+Z: undo.<br>Ctrl/Cmd+Shift+Z: redo.</p><p>For FF8 saves, the FF8 Save button opens the game editor. Icon and game data edits share Undo/Redo.<br><br>Save copy exports a new .mcd. The original file remains unchanged.</p></div></details>
+</nav>
+<main>
+<section class="editor-panel" aria-label="Icon Editor">
+<div class="modebar" role="group" aria-label="Editor mode"><button id="iconMode" class="active" aria-pressed="true">Icon</button><button id="gameMode" disabled aria-pressed="false">FF8 Save</button><span id="gameSupport">Open a memory card.</span></div>
+<div id="iconPane"><fieldset id="controls" disabled>
+<div class="drawing-area">
+<aside class="toolbox" aria-label="Toolbox"><div class="tools" role="group" aria-label="Tools">
+<button data-tool="pencil" class="active" aria-pressed="true" aria-label="Pencil" title="Pencil"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#000" d="m3 17 13-13 5 5L8 22H2z"/><path fill="#ffff00" d="m5 16 10-10 3 3L8 19z"/><path fill="#808000" d="m8 19 10-10 2 1L9 21z"/><path fill="#ff8080" d="m16 4 2-2 5 5-2 2z"/><path fill="#c0c0c0" d="m15 5 1-1 5 5-1 1z"/><path fill="#fff" d="m4 17 4 4H3z"/><path fill="#000" d="M2 20h2v2H2z"/></svg></button>
+<button data-tool="fill" aria-pressed="false" aria-label="Fill" title="Fill"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#000" d="m3 12 9-9 9 9-9 9zM5 2h2v8H5z"/><path fill="#fff" d="m5 12 7-7 7 7-7 7z"/><path fill="#808080" d="m5 12 7 7 7-7z"/><path fill="#000080" d="M18 15h2v2h2v5h-6v-5h2z"/><path fill="#fff" d="M18 18h1v2h-1z"/></svg></button>
+<button data-tool="pick" aria-pressed="false" aria-label="Eyedropper" title="Eyedropper"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#000" d="m14 3 3-3 6 6-3 3-2-2-2 2 2 2-2 2-2-2-8 8H3v-3l8-8-2-2 2-2 2 2 2-2z"/><path fill="#fff" d="m5 15 7-7 2 2-7 7H5z"/><path fill="#000080" d="M3 17h3v3H3z"/></svg></button>
+<button id="magnify" aria-label="Increase zoom" title="Magnifier: change zoom"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#000" d="M5 2h9v2h2v2h2v9h-2v2h-2v2H5v-2H3v-2H1V6h2V4h2zM15 16h3v2h2v2h2v3h-3v-2h-2v-2h-2z"/><path fill="#fff" d="M5 4h9v2h2v9h-2v2H5v-2H3V6h2z"/><path fill="#c0ffff" d="M5 6h9v9H5z"/><path fill="#000080" d="M9 7h1v3h3v1h-3v3H9v-3H6v-1h3z"/></svg></button>
+</div><select id="tool" hidden aria-label="Tool"><option value="pencil">Pencil</option><option value="fill">Fill</option><option value="pick">Eyedropper</option></select><div class="tool-options"><span id="toolName">Pencil</span><div class="stroke-sample" aria-hidden="true"></div><span>1 pixel</span></div></aside>
+<div class="canvas-stage"><div class="canvas-paper"><canvas id="paint" width="384" height="384" aria-label="16 by 16 pixel icon"></canvas></div></div>
+</div>
+<div class="color-strip"><div class="selected-color"><input id="color" type="color" aria-label="Edit the selected color" title="Edit the selected color"><span id="colorLabel">Color 1</span></div><div class="palette-area"><div id="palette"></div><span class="palette-caption">Save palette</span></div><div class="color-options"><label><input id="transparent" type="checkbox"> Transparent</label><label><input id="stp" type="checkbox"> STP bit</label></div></div>
+</fieldset></div>
+<div id="ff8Pane" hidden>
+<div class="ff8-heading"><strong>Final Fantasy VIII — Save Editor</strong><span id="ff8Checksum"></span></div>
+<div id="ff8Tabs" class="save-tabs" role="group" aria-label="Save sections"><button data-page="general">Game</button><button data-page="characters">Characters</button><button data-page="magic">Magic / Junction</button><button data-page="inventory">Inventory</button><button data-page="gfs">Guardian Forces</button><button data-page="cards">Cards</button><button data-page="limits">Limits / Weapons</button><button data-page="config">Config / Chocobo</button><button data-page="advanced">Advanced</button></div>
+<div id="ff8Body"></div><p id="ff8Message" class="ff8-message" role="status">Changes are applied to the card in memory. Use File → Save copy .mcd to export.</p>
+</div>
+</section>
+<aside class="card-panel"><h2>Memory card <span>15 blocks</span></h2><div id="slots"><p class="empty-card">File → Open memory card…<br><br>Select a .mcd to view its icons.</p></div><div class="preview-panel"><h3>Frames</h3><div id="frames"></div><div class="preview-row"><div class="preview-border"><canvas id="preview" width="96" height="96"></canvas></div><p>Animated preview<br>16 × 16 pixel<br>16 colors</p></div><p id="details">Select a save to draw.</p></div></aside>
+</main>
+<footer class="statusbar"><span id="status" role="status">To start, choose File → Open memory card.</span><span id="coordinates">—, — px</span><span>16 × 16 px</span><span id="zoomStatus">2400%</span></footer>
+</div>
+<p class="footnote">Icon mode: palette and pixels. FF8 mode: selected save data and checksums. STP is displayed as a solid color.</p>
+<script src="card.js"></script><script src="ff8.js"></script><script src="ff8-ui.js"></script><script src="app.js"></script>
+</body>
+</html>
